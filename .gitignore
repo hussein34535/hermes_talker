@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Databases
+*.db
+*.db-shm
+*.db-wal
+
+# Sessions & Auth
+*.session
+*.session-journal
+
+# Logs
+logs/
+*.log
+
+# Backups
+backups/
+
+# Project specific
+profiles/
+prompt_versions/
+cache_store.json
+
+# Environment
+.env
+.venv
+env/
+venv/
+ENV/
