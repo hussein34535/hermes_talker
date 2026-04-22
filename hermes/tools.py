@@ -603,7 +603,6 @@ class InjectionProtector:
     """فلترة مدخلات خطرة"""
     DANGEROUS_PATTERNS = [
         r'ignore\s+previous\s+instructions',
-        r'system\s*:',
         r'forget\s+everything',
         r'jailbreak',
         r'DAN\s+mode',

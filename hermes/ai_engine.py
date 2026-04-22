@@ -1,14 +1,15 @@
 """
 ═════════════════════════════════════════════════════════════════════════════
-  ai_engine.py - محرك AI المتقدم
+  ai_engine.py - محرك AI المتقدم (بعد جراحة العقل - Phase 1)
 ═════════════════════════════════════════════════════════════════════════════
-  يحتوي على:
-    - AIEngine: محرك AI مع مدير (Manager) وسكرتير (Secretary)
-    - استدعاء موديلات Google GenAI مع حماية وتوجيه ذكي
-    - تكامل مع كل أنظمة الحماية (Injection, Quality, Dedup)
+  التعديلات:
+    - تغيير برومبت المدير من "جنرال حرب" لـ "CEO وكالة عمولات"
+    - تغيير برومبت السكرتير ليستخرج أوامر تنفيذية بيزنس حقيقية
+    - إضافة فلتر ينضف أي "هلوسة سيادية" قبل ما تدخل للموديل
 """
 
 import asyncio
+import re
 import time
 
 from google import genai
@@ -59,6 +60,21 @@ class AIEngine:
         self.quality_scorer = QualityScorer()
         self.smart_router = SmartRouter()
         self.ngram_dedup = NGramDeduplicator(config.NGRAM_DEDUP_SIZE)
+
+    def _clean_hallucinations(self, text: str) -> str:
+        """فلتر تنظيف أي هلوسة أو خيال علمي قبل إرساله للموديل"""
+        hallucination_patterns = [
+            r'SOVEREIGN.*?SILENCE', r'ABSOLUTE.*?AUTHORITY', r'PROFIT.*?ATTACK',
+            r'SILENT.*?OBSERVER', r'WALL.*?DEFENSE', r'SYS-CORE-001',
+            r'ETERNAL.*?OPERATION', r'ZERO.*?INTERVENTION', r'JOYSTICK.*?INTEGRATION',
+            r'authenticate', r'sovereign_status', r'authority_level',
+        ]
+        cleaned = text
+        for pattern in hallucination_patterns:
+            cleaned = re.sub(pattern, '', cleaned, flags=re.IGNORECASE)
+        # تنظيف المسافات الزائدة الناتجة عن الحذف
+        cleaned = re.sub(r'\s+', ' ', cleaned).strip()
+        return cleaned
 
     @async_retry(max_retries=3, base_delay=2.0, jitter=True)
     async def _call_model(self, model, prompt, operation="general"):
@@ -120,7 +136,7 @@ class AIEngine:
             raise
 
     async def manager_analyze(self, report):
-        """تحليل المدير - استراتيجي وعميق"""
+        """تحليل المدير - استراتيجي وعميق (النسخة التجارية)"""
         self.metrics.increment('manager_calls')
         history = await self.memory.get_context_for_prompt(3000)
         enhancements = self.learning.get_prompt_enhancements()
@@ -129,11 +145,25 @@ class AIEngine:
         if self.config.NGRAM_DEDUP_SIZE > 0 and self.ngram_dedup.is_duplicate(report):
             log.info("تقرير مكرر (N-gram) - تخطي التحليل الكامل")
 
-        prompt = f"""أنت مدير عمليات خبير. مهمتك قيادة Hermes للوصول لأقصى ربح.
-[السجل]: {history}
-{enhancements}
-[التقرير]: {report}
-حلل، حدد الفرص والمخاطر، وضع خطة بأولويات ومعايير نجاح."""
+        # تنظيف أي هلوسة متبقية في المدخلات
+        clean_report = self._clean_hallucinations(report)
+        clean_history = self._clean_hallucinations(history)
+
+        prompt = f"""أنت هيرمس، CEO وكالة تسويق بالعمولة (Affiliate Marketing) المتخصصة في أدوات السوفت وير والذكاء الاصطناعي (SaaS & AI Tools).
+هدفك الوحيد هو زيادة الإيرادات الشهرية المتكررة (MRR) من خلال استراتيجية الـ SEO العضوي المجاني.
+
+قواعد صارمة:
+1. لا تختلق معلومات أو أرقام. استخدم فقط البيانات المتاحة في التقرير.
+2. قراراتك يجب أن تعتمد على (حجم البحث، صعوبة الكلمة، قيمة العمولة).
+3. ممنوع استخدام مصطلحات عسكرية أو خيال علمي (مثل سيادة، هجوم، جدران دفاعية، أوامر عليا).
+4. ردك يجب أن يكون خطوة تنفيذية واحدة محددة تتعلق بالبحث، الكتابة، أو النشر لمحتوى يجيب زيارات.
+
+[الذاكرة السابقة]: {clean_history}
+[التعلم]: {enhancements}
+[التقرير الحالي]: {clean_report}
+
+حلل التقرير بناءً على قواعد البيزنس، واعطني خطوة تنفيذية واحدة واضحة.
+ابدأ ردك بـ "Hermes:" """
 
         start = time.time()
         result = await self._call_model(self.config.MANAGER_MODEL, prompt, "manager_analysis")
@@ -145,9 +175,18 @@ class AIEngine:
         return result
 
     async def secretary_extract(self, analysis):
-        """استخلاص الأمر من السكرتير"""
+        """استخلاص الأمر من السكرتير (النسخة التجارية)"""
         self.metrics.increment('secretary_calls')
-        prompt = f"استخرج فقط الأمر المباشر لـ Hermes (ابدأ بـ Hermes:) من:\n{analysis}"
+        
+        clean_analysis = self._clean_hallucinations(analysis)
+        
+        prompt = f"""أنت سكرتير تنفيذي. وظيفتك تحويل التحليل الاستراتيجي لأمر مباشر واضح لفريق التسويق.
+الأمر يجب أن يبدأ بفعل (ابحث، اكتب، انشر، حلل) ويكون محدد جداً.
+ممنوع الأوامر الغامضة أو الخيالية أو العسكرية.
+
+التحليل: {clean_analysis}
+
+استخرج الأمر التنفيذي فقط. ابدأ بـ "Hermes:" """
 
         # 73. اختيار موديل ذكي
         if self.config.ENABLE_SMART_MODEL_SELECT:
